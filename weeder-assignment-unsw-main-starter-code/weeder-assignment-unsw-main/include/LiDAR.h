@@ -36,7 +36,3 @@ private:
 	SM_LiDAR^ LiDAR_SM_LiDAR_;
 
 };
-
-
-#pragma once
-#include <UGVModule.h>
