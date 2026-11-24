@@ -21,11 +21,12 @@ For clarification of inheritance requirements see diagram in the assignment spec
 ref class NetworkedModule abstract : public UGVModule
 {
 	public:
-		virtual error_state connect(String^ hostName, int portNumber) = 0;	// Establish TCP connection
+		virtual error_state connect(System::String^ hostName, int portNumber) = 0;	// Establish TCP connection
 		virtual error_state communicate() = 0;								// Communicate over TCP connection (includes any error checking required on data)
 
 	protected:
 		TcpClient^ Client;					// Handle for TCP connection
 		NetworkStream^ Stream;				// Handle for TCP data stream
 		array<unsigned char>^ ReadData;		// Array to store sensor Data (only used for sensor modules)
+		array<unsigned char>^ SendData;		// Array to store sensor Data (only used for sensor modules)
 };

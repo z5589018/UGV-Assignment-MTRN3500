@@ -95,6 +95,9 @@
       <AdditionalDependencies>ControllerInterface_x64_Debug.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)\libs</AdditionalLibraryDirectories>
     </Link>
+    <ProjectReference>
+      <UseLibraryDependencyInputs>true</UseLibraryDependencyInputs>
+    </ProjectReference>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -130,15 +133,28 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\Controller.h" />
     <ClInclude Include="..\include\ControllerInterface.h" />
+    <ClInclude Include="..\include\CrashAvoidance.h" />
+    <ClInclude Include="..\include\Display.h" />
+    <ClInclude Include="..\include\GNSS.h" />
+    <ClInclude Include="..\include\LiDAR.h" />
     <ClInclude Include="..\include\NetworkedModule.h" />
     <ClInclude Include="..\include\SMObjects.h" />
+    <ClInclude Include="..\include\TMM.h" />
     <ClInclude Include="..\include\UGVModule.h" />
-    <ClInclude Include="TMM.h" />
+    <ClInclude Include="..\include\VC.h" />
+    <ClInclude Include="old_ControllerInterface.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\include\Controller.cpp" />
+    <ClCompile Include="..\include\CrashAvoidance.cpp" />
+    <ClCompile Include="..\include\Display.cpp" />
+    <ClCompile Include="..\include\GNSS.cpp" />
+    <ClCompile Include="..\include\LiDAR.cpp" />
+    <ClCompile Include="..\include\TMM.cpp" />
+    <ClCompile Include="..\include\VC.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="TMM.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
