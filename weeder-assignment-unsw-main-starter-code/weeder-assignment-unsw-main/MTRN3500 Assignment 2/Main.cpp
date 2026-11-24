@@ -1,29 +1,22 @@
+#include <Controller.h>
 #include "Display.h"
 #include <conio.h>
 #include <LiDAR.h>
-
-using namespace System;
-using namespace System::Threading;
+#include <GNSS.h>
+#include <TMM.h>
+#include <VC.h>
 
 int main(void) {
+    SM_ThreadManagement^ smthread = gcnew SM_ThreadManagement();
+    SM_VehicleControl^ sm_vc = gcnew SM_VehicleControl();
 
-	SM_LiDAR^ SM_LMS151 = gcnew SM_LiDAR;
-	LiDAR^ LMS151 = gcnew LiDAR(nullptr, SM_LMS151);
+    ThreadManagement^ thread = gcnew ThreadManagement();
+    Controller^ ctrl = gcnew Controller(0,0,0,0);
+    VC^ vc = gcnew VC(smthread, sm_vc);
+    
+    thread->threadFunction();
+    ctrl->threadFunction();
+    vc->threadFunction();
 
-	Display^ MatlabGraph = gcnew Display(nullptr, SM_LMS151, nullptr);
-
-	MatlabGraph->connect(DISPLAY_ADDRESS, 23000);
-
-	LMS151->connect(DISPLAY_ADDRESS, 23000);
-
-	while (!_kbhit()) {
-		LMS151->communicate();
-		LMS151->processSharedMemory();
-		MatlabGraph->communicate();
-		Thread::Sleep(50);
-	}
-	
-
-
-	return 0;
+    return 0;
 }

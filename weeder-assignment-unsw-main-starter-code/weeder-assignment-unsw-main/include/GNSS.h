@@ -11,9 +11,6 @@ public:
 	// Send/Recieve data from shared memory structures
 	error_state processSharedMemory() override;
 
-	// Shutdown all modules in the software
-	void shutdownModules();
-
 	// Get Shutdown signal for module, from Thread Management SM
 	bool getShutdownFlag() override;
 
@@ -23,6 +20,10 @@ public:
 	virtual error_state connect(String^ hostName, int portNumber) override;	// Establish TCP connection
 
 	virtual error_state communicate() override;								// Communicate over TCP connection (includes any error checking required on data)
+
+	unsigned long CRC32Value(int i);
+
+	unsigned long CalculateBlockCRC32(unsigned long ulCount, unsigned char* ucBuffer);
 
 
 private:

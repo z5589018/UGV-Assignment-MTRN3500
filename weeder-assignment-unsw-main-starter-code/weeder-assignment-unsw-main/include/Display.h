@@ -5,14 +5,11 @@
 ref class Display : public NetworkedModule {
 public:
 
-	Display() {}; //Default constructor
+	Display(); //Default constructor
 
 	Display(SM_ThreadManagement^ SM_TM, SM_LiDAR^ SM_lidar, SM_GNSS^ SM_gnss);
 	// Send/Recieve data from shared memory structures
 	error_state processSharedMemory() override;
-
-	// Shutdown all modules in the software
-	void shutdownModules();
 
 	// Get Shutdown signal for module, from Thread Management SM
 	bool getShutdownFlag() override;

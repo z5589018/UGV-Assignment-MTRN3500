@@ -2,17 +2,14 @@
 #include <UGVModule.h>
 #include <NetworkedModule.h>
 
-ref class VehicleController : public NetworkedModule {
+ref class VC : public NetworkedModule {
 public:
 
-	VehicleController() {}; //Default constructor
+	VC(); //Default constructor
 
-	VehicleController(SM_ThreadManagement^ SM_TM, SM_VehicleControl^ VEHCTRL_SM_);
+	VC(SM_ThreadManagement^ SM_TM, SM_VehicleControl^ VEHCTRL_SM_);
 	// Send/Recieve data from shared memory structures
 	error_state processSharedMemory() override;
-
-	// Shutdown all modules in the software
-	void shutdownModules();
 
 	// Get Shutdown signal for module, from Thread Management SM
 	bool getShutdownFlag() override;
@@ -20,10 +17,9 @@ public:
 	// Thread function for TMM
 	void threadFunction() override;
 
-	virtual error_state connect(String^ hostName, int portNumber) override;	// Establish TCP connection
+	virtual error_state connect(System::String^ hostName, int portNumber) override;	// Establish TCP connection
 
 	virtual error_state communicate() override;								// Communicate over TCP connection (includes any error checking required on data)
-
 
 private:
 

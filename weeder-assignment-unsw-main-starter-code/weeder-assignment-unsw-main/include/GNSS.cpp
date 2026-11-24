@@ -3,6 +3,8 @@
 
 #include <SMObjects.h>
 
+#define CRC32_POLYNOMIAL 0xEDB88320L
+
 GNSS::GNSS(SM_ThreadManagement^ SM_TM, SM_GNSS^ SM_gnss) {
 	SM_TM_ = SM_TM;
 	GNSS_SM_GNSS_ = SM_gnss;
@@ -10,117 +12,121 @@ GNSS::GNSS(SM_ThreadManagement^ SM_TM, SM_GNSS^ SM_gnss) {
 }
 // Send/Recieve data from shared memory structures
 error_state GNSS::processSharedMemory() {
-	/*
-	Stream->Read(ReadData, 0, ReadData->Length);
-	String^ Response = Encoding::ASCII->GetString(ReadData);
-
-	array<String^>^ Fragments = Response->Split(' ');
-	int numPoints = Convert::ToInt32(Fragments[25], 16);
-
-
-	Monitor::Enter(GNSS_SM_LiDAR_->lockObject);
-
-	for (int i = 0; i < 361; i++) {
-		GNSS_SM_GNSS_->x[i] = Convert::ToInt32(Fragments[116 + i], 16) * Math::Sin(i * 0.5 * Math::PI / 180.0);
-		GNSS_SM_GNSS_->y[i] = -Convert::ToInt32(Fragments[116 + i], 16) * Math::Cos(i * 0.5 * Math::PI / 180.0);
-	}
-
-	Monitor::Exit(LiDAR_SM_LiDAR_->lockObject);
-
-	if (numPoints == 0x21D) {
+	if (ReadData == nullptr) {
 		return SUCCESS;
 	}
-	return ERR_INVALID_DATA;
-	*/
+	pin_ptr<unsigned char> ucBuffer = &ReadData[0];
+	unsigned char H = ReadData[3];
+
+	// Making an assumption that the data packet isn't going to be much different from the one stipulated is the GPS Manual:
+	// i.e. assuming that the header is 28 bytes long
+	// From GPS manual, we know that:
+
+	// Takes the ReadData[H+16] byte and converts 8 bytes from there to northing, easting, etc. 
+	double northing = BitConverter::ToDouble(ReadData, H + 16);
+	double easting = BitConverter::ToDouble(ReadData, H + 24);
+	double height = BitConverter::ToDouble(ReadData, H + 32);
+
+	int CRC = H + 80;
+
+	if (CalculateBlockCRC32(CRC, ucBuffer) != BitConverter::ToInt32(ReadData, CRC)) {
+		return ERR_INVALID_DATA;
+	}
+	Monitor::Enter(GNSS_SM_GNSS_->lockObject);
+	GNSS_SM_GNSS_->Northing = northing;
+	GNSS_SM_GNSS_->Easting = easting;
+	GNSS_SM_GNSS_->Height = height;
+	Monitor::Exit(GNSS_SM_GNSS_->lockObject);
+
 	return SUCCESS;
-}
-
-// Shutdown all modules in the software
-void GNSS::shutdownModules() {
-
 }
 
 // Get Shutdown signal for module, from Thread Management SM
 bool GNSS::getShutdownFlag() {
-	return true;
+	return (SM_TM_->shutdown & bit_GNSS) != 0;
 }
 
 // Thread function for TMM
 void GNSS::threadFunction() {
+	while (!getShutdownFlag()) {
+		Monitor::Enter(SM_TM_->lockObject);
+		SM_TM_->heartbeat |= bit_GNSS;
+		Monitor::Exit(SM_TM_->lockObject);
+		connect(WEEDER_ADDRESS, 24000); //Assuming the hostname is weeder (it might not be)(also GNSS uses 24000)
+		communicate();
+		processSharedMemory();
 
+		Thread::Sleep(50);
+	}
+	Stream->Close();
+	Client->Close();
 }
 
 error_state GNSS::connect(String^ hostName, int portNumber) {
-	/*
-	Client = gcnew TcpClient(hostName, portNumber);
-	Stream = Client->GetStream();
-	Client->NoDelay = true;
-	Client->ReceiveTimeout = 500;
-	Client->SendTimeout = 500;
-	Client->ReceiveBufferSize = 1024;
-	Client->SendBufferSize = 1024;
-
-	SendData = gcnew array<unsigned char>(512);
-	ReadData = gcnew array<unsigned char>(8192);
-
-	//Step 1: Authorise to change the configuration
-	String^ authorCmd = "sMn SetAccessMore 03 F4724744";
-	SendData = Encoding::ASCII->GetBytes(authorCmd);
-	Stream->WriteByte(0x02);
-	Stream->Write(SendData, 0, SendData->Length);
-	Stream->WriteByte(0x03);
-	System::Threading::Thread::Sleep(100);
-
-	int len = Stream->Read(ReadData, 0, ReadData->Length);
-	String^ resp = Encoding::ASCII->GetString(ReadData, 0, len);
-	Console::WriteLine("Auth response: \n{0}", resp);
-
-	//Step2: Configure scan frequency, angle and resolution
-	String^ scanCfg = "sMn mLMPsetscanfg +5000 + +5000 +0 +1800000";
-
-	SendData = Encoding::ASCII->GetBytes(scanCfg);
-	Stream->WriteByte(0x02);
-	Stream->Write(SendData, 0, SendData->Length);
-	Stream->WriteByte(0x03);
-	Thread::Sleep(100);
-
-	len = Stream->Read(ReadData, 0, ReadData->Length);
-	resp = Encoding::ASCII->GetString(ReadData, 0, len);
-	Console::WriteLine("Scan config response: \n{0}", resp);
-
-	//Step 3: Configure LiDAR to output only DIST1 channel
-	String^ dataCfg = "sWn LMDscandatacfg 01 00 0 0 0 00 00 0 0 0 0 +1";
-	SendData = Encoding::ASCII->GetBytes(dataCfg);
-	Stream->WriteByte(0x02);
-	Stream->Write(SendData, 0, SendData->Length);
-	Stream->WriteByte(0x03);
-	Thread::Sleep(100);
-
-	len = Stream->Read(ReadData, 0, ReadData->Length);
-	resp = Encoding::ASCII->GetString(ReadData, 0, len);
-	Console::WriteLine("Channel config response: \n{0}", resp);
-
-	*/
+	try {
+		Client = gcnew TcpClient(hostName, portNumber);
+		Stream = Client->GetStream();
+		Client->NoDelay = true;
+		Client->ReceiveTimeout = 500;
+		Client->SendTimeout = 500;
+		Client->ReceiveBufferSize = 1024;
+		Client->SendBufferSize = 1024;
+	}
+	catch (System::Exception^ e) {
+		return ERR_CONNECTION;
+	}
+	
 	return SUCCESS;
 	
 
 }
 
 error_state GNSS::communicate() {
-	/*
-	//sRN LMDscandata
-	String^ Command = "sRN LMDscandata";
-	SendData = Encoding::ASCII->GetBytes(Command);
-	Stream->WriteByte(0x02);
-	Stream->Write(SendData, 0, SendData->Length);
-	Stream->WriteByte(0x03);
-	Thread::Sleep(100);
 
-	int len = Stream->Read(ReadData, 0, ReadData->Length);
-	String^ Response = Encoding::ASCII->GetString(ReadData, 0, len);
-	Console::WriteLine(Response);
-	Console::WriteLine();
-	*/
+	// Error that the ReadData is null when using simulator. Perhaps its the simulator or my bad code :( But the GPS is connected to the simulator so idk
+	if (ReadData != nullptr) {
+
+		try {
+			int bit = Stream->Read(ReadData, 0, ReadData->Length);
+			if (bit < 4) {
+				return ERR_NO_DATA;
+			}
+		}
+		catch (Exception^ e) {
+			Console::WriteLine("Error with reading GNSS data: ", e);
+			return ERR_CONNECTION;
+		}
+	}
+	
+
 	return SUCCESS;
+}
+
+// Code from Appendix A: 
+unsigned long GNSS::CRC32Value(int i) {
+	int j;
+	unsigned long ulCRC;
+	ulCRC = i;
+	for (j = 8; j > 0; j--)
+	{
+		if (ulCRC & 1)
+			ulCRC = (ulCRC >> 1) ^ CRC32_POLYNOMIAL;
+		else
+			ulCRC >>= 1;
+	}
+	return ulCRC;
+}
+
+unsigned long GNSS::CalculateBlockCRC32(unsigned long ulCount, unsigned char* ucBuffer) {
+	unsigned long ulTemp1;
+	unsigned long ulTemp2;
+	unsigned long ulCRC = 0;
+
+	while (ulCount-- != 0) {
+		ulTemp1 = (ulCRC >> 8) & 0x00FFFFFFL;
+		ulTemp2 = CRC32Value(((int)ulCRC ^ * ucBuffer++) & 0xff);
+		ulCRC = ulTemp1 ^ ulTemp2;
+	}
+	return ulCRC;
 }
 

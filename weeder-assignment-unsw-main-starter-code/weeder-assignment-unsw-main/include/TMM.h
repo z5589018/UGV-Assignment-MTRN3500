@@ -1,6 +1,6 @@
 #pragma once
-
 #include <UGVModule.h>
+
 
 ref class ThreadManagement : public UGVModule {
 public:
@@ -21,4 +21,9 @@ public:
 
 private:
     // Add any additional data members or helper functions here
+    array<Thread^>^ ThreadList;
+    SM_ThreadManagement^ SM;
+    SM_GNSS^ gnssSM;
+    SM_LiDAR^ lidarSM;
+    SM_VehicleControl^ sm_vc;
 };
